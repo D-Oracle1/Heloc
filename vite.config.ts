@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'robots.txt'],
+      includeAssets: ['favicon-shield-32.png', 'favicon-shield-64.png', 'apple-touch-icon.png', 'robots.txt'],
       manifest: {
         name: 'US Bank HELOC — Home Equity Access',
         short_name: 'US Bank HELOC',
