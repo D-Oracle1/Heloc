@@ -1,0 +1,5 @@
+-- Seed data for US Bank HELOC.
+-- All per-user data (account, linked accounts, the $650,000 US Bank deposit) is
+-- created automatically on signup by public.handle_new_user()
+-- (see migrations/0002 and 0003). There is no shared/global seed data.
+-- The admin login is provisioned out-of-band; see project setup notes.

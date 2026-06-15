@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Download, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Logo } from './Logo';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -52,7 +53,9 @@ export function InstallPrompt() {
               <Download size={20} />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold">Install HELOC</p>
+              <p className="mb-0.5 flex items-center gap-1.5 text-sm font-semibold">
+                Install <Logo chip className="h-3" />
+              </p>
               <p className="truncate text-xs text-white/70">Add to your home screen for a faster, app-like experience.</p>
             </div>
             <button

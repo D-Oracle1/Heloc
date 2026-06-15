@@ -10,6 +10,9 @@ import {
   Moon,
   Home,
   Mail,
+  Phone,
+  Calendar,
+  Briefcase,
   RotateCcw,
   type LucideIcon,
 } from 'lucide-react';
@@ -18,15 +21,23 @@ import { PageTransition } from '../components/ui/PageTransition';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { BottomSheet } from '../components/ui/BottomSheet';
+import { Logo } from '../components/ui/Logo';
 import { useAppStore } from '../data/store';
+import { useAuth } from '../data/auth';
 import { formatCurrency, formatDate } from '../utils/format';
 
 export default function Profile() {
   const { account, destinations, resetDemo } = useAppStore();
+  const { signOut, demoMode } = useAuth();
   const [notifications, setNotifications] = useState(true);
   const [biometrics, setBiometrics] = useState(true);
   const [darkPref, setDarkPref] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+
+  const address =
+    [account.addressStreet, account.addressCity, account.addressState, account.addressZip]
+      .filter(Boolean)
+      .join(', ') || account.property || '';
 
   return (
     <PageTransition>
@@ -56,11 +67,22 @@ export default function Profile() {
           <div className="flex items-start gap-2 border-t border-navy-100 p-4">
             <Home size={18} className="mt-0.5 shrink-0 text-navy-500" />
             <div>
-              <p className="text-xs font-medium text-navy-400">Secured property</p>
-              <p className="text-sm font-semibold text-navy-800">{account.property}</p>
+              <p className="text-xs font-medium text-navy-400">Home address</p>
+              <p className="text-sm font-semibold text-navy-800">{address || '—'}</p>
             </div>
           </div>
         </Card>
+
+        {/* Personal details */}
+        <Section title="Personal details">
+          {account.phone && <Row icon={Phone} label="Phone" value={account.phone} />}
+          {account.dob && <Row icon={Calendar} label="Date of birth" value={formatDate(account.dob)} />}
+          {account.ssnLast4 && <Row icon={Fingerprint} label="SSN" value={`•••-••-${account.ssnLast4}`} />}
+          {account.employer && <Row icon={Briefcase} label="Employer" value={account.employer} />}
+          {typeof account.annualIncome === 'number' && account.annualIncome > 0 && (
+            <Row icon={CreditCard} label="Annual income" value={formatCurrency(account.annualIncome, { compact: true })} />
+          )}
+        </Section>
 
         {/* Linked accounts */}
         <Section title="Linked accounts">
@@ -94,21 +116,35 @@ export default function Profile() {
         </Section>
 
         <div className="space-y-3">
-          <Button
-            variant="outline"
-            fullWidth
-            size="lg"
-            leftIcon={<RotateCcw size={18} />}
-            onClick={() => setConfirmReset(true)}
-          >
-            Reset demo data
-          </Button>
-          <Button variant="ghost" fullWidth size="lg" leftIcon={<LogOut size={18} />} className="!text-crimson-600">
-            Sign out
-          </Button>
+          {demoMode && (
+            <Button
+              variant="outline"
+              fullWidth
+              size="lg"
+              leftIcon={<RotateCcw size={18} />}
+              onClick={() => setConfirmReset(true)}
+            >
+              Reset demo data
+            </Button>
+          )}
+          {!demoMode && (
+            <Button
+              variant="ghost"
+              fullWidth
+              size="lg"
+              leftIcon={<LogOut size={18} />}
+              className="!text-crimson-600"
+              onClick={() => signOut()}
+            >
+              Sign out
+            </Button>
+          )}
         </div>
 
-        <p className="pb-2 text-center text-xs text-navy-400">HELOC · v1.0.0 · Demo experience</p>
+        <div className="flex items-center justify-center gap-2 pb-2 text-xs text-navy-400">
+          <Logo className="h-4" />
+          <span>· v1.0.0{demoMode ? ' · Demo experience' : ''}</span>
+        </div>
       </div>
 
       <BottomSheet

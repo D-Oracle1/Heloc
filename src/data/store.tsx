@@ -4,83 +4,30 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import type { Account, Claim, ClaimMethod, PayoutDestination } from '../types';
+import { isSupabaseEnabled } from './supabase';
+import { fetchAppData, payProcessingFee, persistAccount, persistClaim } from './repository';
+import { useAuth } from './auth';
 
 const STORAGE_KEY = 'heloc.state.v1';
 
-const DEFAULT_ACCOUNT: Account = {
-  name: 'Jordan Avery',
-  email: 'jordan.avery@example.com',
-  avatarInitials: 'JA',
-  memberSince: '2021-03-14',
-  creditLimit: 150000,
-  availableBalance: 92450.75,
-  outstandingBalance: 57549.25,
-  apr: 7.85,
-  property: '128 Maple Crest Ave, Austin, TX',
+/** Neutral placeholder until the signed-in user's data loads. No demo identity. */
+const EMPTY_ACCOUNT: Account = {
+  name: '',
+  email: '',
+  avatarInitials: '',
+  memberSince: new Date().toISOString().slice(0, 10),
+  creditLimit: 0,
+  availableBalance: 0,
+  outstandingBalance: 0,
+  apr: 0,
+  processingFee: 500,
+  feePaid: false,
 };
-
-const DEFAULT_DESTINATIONS: PayoutDestination[] = [
-  { id: 'dest-1', label: 'Chase Checking', method: 'bank', detail: '•••• 4821' },
-  { id: 'dest-2', label: 'Wells Fargo Savings', method: 'bank', detail: '•••• 9034' },
-  { id: 'dest-3', label: 'Wire Transfer', method: 'wire', detail: 'Intl. SWIFT' },
-  { id: 'dest-4', label: 'Visa Debit', method: 'card', detail: '•••• 1290' },
-];
-
-const DEFAULT_CLAIMS: Claim[] = [
-  {
-    id: 'c-1007',
-    reference: 'HE-2026-1007',
-    amount: 5200,
-    method: 'bank',
-    status: 'completed',
-    createdAt: '2026-06-02T14:21:00Z',
-    destination: 'Chase Checking •••• 4821',
-    note: 'Kitchen remodel deposit',
-  },
-  {
-    id: 'c-1006',
-    reference: 'HE-2026-1006',
-    amount: 12000,
-    method: 'wire',
-    status: 'processing',
-    createdAt: '2026-06-08T09:05:00Z',
-    destination: 'Wire Transfer Intl. SWIFT',
-    note: 'Contractor milestone',
-  },
-  {
-    id: 'c-1005',
-    reference: 'HE-2026-1005',
-    amount: 850,
-    method: 'card',
-    status: 'completed',
-    createdAt: '2026-05-21T17:48:00Z',
-    destination: 'Visa Debit •••• 1290',
-  },
-  {
-    id: 'c-1004',
-    reference: 'HE-2026-1004',
-    amount: 3000,
-    method: 'bank',
-    status: 'approved',
-    createdAt: '2026-06-11T11:30:00Z',
-    destination: 'Wells Fargo Savings •••• 9034',
-    note: 'Emergency fund',
-  },
-  {
-    id: 'c-1003',
-    reference: 'HE-2026-1003',
-    amount: 450,
-    method: 'card',
-    status: 'rejected',
-    createdAt: '2026-05-09T08:12:00Z',
-    destination: 'Visa Debit •••• 1290',
-    note: 'Limit exceeded for method',
-  },
-];
 
 interface PersistedState {
   account: Account;
@@ -96,12 +43,22 @@ interface ClaimInput {
 }
 
 interface AppStore extends PersistedState {
+  /** False until the authenticated user's data has loaded (always true in demo mode). */
+  ready: boolean;
   submitClaim: (input: ClaimInput) => Claim;
   resetDemo: () => void;
   updateAccount: (patch: Partial<Account>) => void;
+  /** Pay the processing fee that unlocks fund access. */
+  payFee: () => void;
 }
 
 const AppStoreContext = createContext<AppStore | null>(null);
+
+const EMPTY_STATE: PersistedState = {
+  account: EMPTY_ACCOUNT,
+  claims: [],
+  destinations: [],
+};
 
 function loadState(): PersistedState {
   if (typeof localStorage !== 'undefined') {
@@ -115,28 +72,61 @@ function loadState(): PersistedState {
       /* ignore corrupt state */
     }
   }
-  return {
-    account: DEFAULT_ACCOUNT,
-    claims: DEFAULT_CLAIMS,
-    destinations: DEFAULT_DESTINATIONS,
-  };
+  return EMPTY_STATE;
 }
 
 let claimCounter = 1100;
 
 export function AppStoreProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<PersistedState>(loadState);
+  const { session, demoMode } = useAuth();
+  // In demo mode, hydrate from localStorage/defaults synchronously and stay ready.
+  const [state, setState] = useState<PersistedState>(() => (demoMode ? loadState() : EMPTY_STATE));
+  const [ready, setReady] = useState(demoMode);
+  // Latest destinations for synchronous lookups in submitClaim.
+  const destinationsRef = useRef(state.destinations);
+  destinationsRef.current = state.destinations;
 
+  // Load the authenticated user's data; refetch whenever the user changes.
   useEffect(() => {
+    if (demoMode || !isSupabaseEnabled) {
+      setReady(true);
+      return;
+    }
+    if (!session) {
+      // Signed out: clear any in-memory and cached data.
+      setState(EMPTY_STATE);
+      setReady(false);
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    let active = true;
+    setReady(false);
+    fetchAppData().then((remote) => {
+      if (!active) return;
+      if (remote) setState(remote);
+      setReady(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, [session, demoMode]);
+
+  // Cache to localStorage in demo mode so the app loads instantly and works offline.
+  useEffect(() => {
+    if (!demoMode) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {
       /* storage may be unavailable */
     }
-  }, [state]);
+  }, [state, demoMode]);
 
   const submitClaim = useCallback((input: ClaimInput): Claim => {
-    const destination = DEFAULT_DESTINATIONS.find((d) => d.id === input.destinationId);
+    const destination = destinationsRef.current.find((d) => d.id === input.destinationId);
     const ref = `HE-2026-${++claimCounter}`;
     const claim: Claim = {
       id: `c-${claimCounter}`,
@@ -149,34 +139,49 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       destination: destination ? `${destination.label} ${destination.detail}` : 'Linked account',
     };
 
-    setState((prev) => ({
-      ...prev,
-      claims: [claim, ...prev.claims],
-      account: {
+    setState((prev) => {
+      const account: Account = {
         ...prev.account,
         availableBalance: Math.max(0, prev.account.availableBalance - input.amount),
         outstandingBalance: prev.account.outstandingBalance + input.amount,
-      },
-    }));
+      };
+      // Persist in the background; local state is the source of truth for UI.
+      persistClaim(claim, account).catch((e) => console.warn('[supabase] persistClaim failed:', e));
+      return { ...prev, claims: [claim, ...prev.claims], account };
+    });
 
     return claim;
   }, []);
 
   const resetDemo = useCallback(() => {
-    setState({
-      account: DEFAULT_ACCOUNT,
-      claims: DEFAULT_CLAIMS,
-      destinations: DEFAULT_DESTINATIONS,
+    // With Supabase, "reset" reloads the server's truth; otherwise clear local state.
+    if (isSupabaseEnabled) {
+      fetchAppData().then((remote) => {
+        if (remote) setState(remote);
+      });
+      return;
+    }
+    setState(EMPTY_STATE);
+  }, []);
+
+  const payFee = useCallback(() => {
+    setState((prev) => {
+      payProcessingFee().catch((e) => console.warn('[supabase] payProcessingFee failed:', e));
+      return { ...prev, account: { ...prev.account, feePaid: true } };
     });
   }, []);
 
   const updateAccount = useCallback((patch: Partial<Account>) => {
-    setState((prev) => ({ ...prev, account: { ...prev.account, ...patch } }));
+    setState((prev) => {
+      const account = { ...prev.account, ...patch };
+      persistAccount(account).catch((e) => console.warn('[supabase] persistAccount failed:', e));
+      return { ...prev, account };
+    });
   }, []);
 
   const value = useMemo<AppStore>(
-    () => ({ ...state, submitClaim, resetDemo, updateAccount }),
-    [state, submitClaim, resetDemo, updateAccount],
+    () => ({ ...state, ready, submitClaim, resetDemo, updateAccount, payFee }),
+    [state, ready, submitClaim, resetDemo, updateAccount, payFee],
   );
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;

@@ -2,6 +2,9 @@ import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
 import Dashboard from './pages/Dashboard';
+import Auth from './pages/Auth';
+import Admin from './pages/Admin';
+import { useAuth } from './data/auth';
 
 // Lazy-load non-essential routes to keep the initial bundle lean.
 const Claims = lazy(() => import('./pages/Claims'));
@@ -16,9 +19,46 @@ function RouteFallback() {
   );
 }
 
+function FullScreenLoader() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-navy-900" role="status" aria-label="Loading">
+      <span className="h-9 w-9 animate-spin rounded-full border-[3px] border-white/30 border-t-white" />
+    </div>
+  );
+}
+
 export default function App() {
+  const { session, loading, demoMode, isAdmin, roleResolved } = useAuth();
+
+  // While restoring an existing session, avoid flashing the auth screen.
+  if (loading) return <FullScreenLoader />;
+
+  // When auth is configured and the user is signed out, show the auth screen
+  // (the /admin route still renders its own staff sign-in).
+  if (!demoMode && !session) {
+    return (
+      <Routes>
+        <Route path="/admin/*" element={<Admin />} />
+        <Route path="*" element={<Auth />} />
+      </Routes>
+    );
+  }
+
+  // Wait for admin status before deciding which app to show.
+  if (session && !roleResolved) return <FullScreenLoader />;
+
+  // Admins get the admin console only.
+  if (isAdmin) {
+    return (
+      <Routes>
+        <Route path="*" element={<Admin />} />
+      </Routes>
+    );
+  }
+
   return (
     <Routes>
+      <Route path="/admin/*" element={<Admin />} />
       <Route element={<AppLayout />}>
         <Route index element={<Dashboard />} />
         <Route

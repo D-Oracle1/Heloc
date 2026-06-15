@@ -4,16 +4,16 @@ import { TopNav } from '../components/layout/TopNav';
 import { PageTransition } from '../components/ui/PageTransition';
 import { ClaimListItem } from '../components/claims/ClaimListItem';
 import { StatusBadge } from '../components/ui/StatusBadge';
-import { BottomSheet } from '../components/ui/BottomSheet';
+import { TransactionReceipt } from '../components/claims/TransactionReceipt';
 import { useAppStore } from '../data/store';
 import { formatCurrency, formatDate } from '../utils/format';
 import type { Claim, ClaimStatus } from '../types';
 
 const FILTERS: { key: ClaimStatus | 'all'; label: string }[] = [
   { key: 'all', label: 'All' },
+  { key: 'completed', label: 'Completed' },
   { key: 'pending', label: 'Pending' },
   { key: 'processing', label: 'Processing' },
-  { key: 'completed', label: 'Completed' },
   { key: 'rejected', label: 'Rejected' },
 ];
 
@@ -31,6 +31,7 @@ export default function History() {
         !q ||
         c.reference.toLowerCase().includes(q) ||
         c.destination.toLowerCase().includes(q) ||
+        (c.source ?? '').toLowerCase().includes(q) ||
         (c.note ?? '').toLowerCase().includes(q);
       return matchesFilter && matchesQuery;
     });
@@ -38,7 +39,7 @@ export default function History() {
 
   return (
     <PageTransition>
-      <TopNav title="History" subtitle={`${claims.length} total claims`} />
+      <TopNav title="Transactions" subtitle={`${claims.length} total`} />
 
       <div className="space-y-4 px-4 py-5 lg:px-8">
         {/* Search */}
@@ -49,8 +50,8 @@ export default function History() {
             inputMode="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by reference, account or note"
-            aria-label="Search claims"
+            placeholder="Search by reference, source or note"
+            aria-label="Search transactions"
             className="w-full bg-transparent py-3 text-navy-900 outline-none placeholder:text-navy-300"
           />
         </div>
@@ -64,9 +65,7 @@ export default function History() {
               onClick={() => setFilter(key)}
               aria-pressed={filter === key}
               className={`touch-target shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors focus-ring ${
-                filter === key
-                  ? 'bg-navy-800 text-white shadow-card'
-                  : 'bg-white text-navy-600 hover:bg-navy-50'
+                filter === key ? 'bg-navy-800 text-white shadow-card' : 'bg-white text-navy-600 hover:bg-navy-50'
               }`}
             >
               {label}
@@ -80,7 +79,7 @@ export default function History() {
             <span className="grid h-14 w-14 place-items-center rounded-2xl bg-navy-50 text-navy-400">
               <Inbox size={26} />
             </span>
-            <p className="mt-3 font-semibold text-navy-800">No claims found</p>
+            <p className="mt-3 font-semibold text-navy-800">No transactions found</p>
             <p className="mt-1 text-sm text-navy-400">Try adjusting your search or filters</p>
           </div>
         ) : (
@@ -98,30 +97,40 @@ export default function History() {
                 <thead className="border-b border-navy-100 bg-navy-50/50 text-xs uppercase tracking-wide text-navy-500">
                   <tr>
                     <th className="px-5 py-3 font-semibold">Reference</th>
-                    <th className="px-5 py-3 font-semibold">Destination</th>
+                    <th className="px-5 py-3 font-semibold">Description</th>
                     <th className="px-5 py-3 font-semibold">Date</th>
                     <th className="px-5 py-3 text-right font-semibold">Amount</th>
                     <th className="px-5 py-3 font-semibold">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-navy-50">
-                  {filtered.map((claim) => (
-                    <tr
-                      key={claim.id}
-                      onClick={() => setSelected(claim)}
-                      className="cursor-pointer transition-colors hover:bg-navy-50/60"
-                    >
-                      <td className="px-5 py-3.5 font-semibold text-navy-900">{claim.reference}</td>
-                      <td className="px-5 py-3.5 text-navy-600">{claim.destination}</td>
-                      <td className="px-5 py-3.5 text-navy-500">{formatDate(claim.createdAt)}</td>
-                      <td className="tabular px-5 py-3.5 text-right font-bold text-navy-900">
-                        {formatCurrency(claim.amount)}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <StatusBadge status={claim.status} />
-                      </td>
-                    </tr>
-                  ))}
+                  {filtered.map((claim) => {
+                    const incoming = claim.direction === 'in';
+                    return (
+                      <tr
+                        key={claim.id}
+                        onClick={() => setSelected(claim)}
+                        className="cursor-pointer transition-colors hover:bg-navy-50/60"
+                      >
+                        <td className="px-5 py-3.5 font-semibold text-navy-900">{claim.reference}</td>
+                        <td className="px-5 py-3.5 text-navy-600">
+                          {incoming ? `Deposit from ${claim.source ?? 'Bank'}` : claim.destination}
+                        </td>
+                        <td className="px-5 py-3.5 text-navy-500">{formatDate(claim.createdAt)}</td>
+                        <td
+                          className={`tabular px-5 py-3.5 text-right font-bold ${
+                            incoming ? 'text-emerald-600' : 'text-navy-900'
+                          }`}
+                        >
+                          {incoming ? '+' : '−'}
+                          {formatCurrency(claim.amount)}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <StatusBadge status={claim.status} />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -129,42 +138,7 @@ export default function History() {
         )}
       </div>
 
-      <ClaimDetailSheet claim={selected} onClose={() => setSelected(null)} />
+      <TransactionReceipt claim={selected} onClose={() => setSelected(null)} />
     </PageTransition>
-  );
-}
-
-function ClaimDetailSheet({ claim, onClose }: { claim: Claim | null; onClose: () => void }) {
-  return (
-    <BottomSheet open={!!claim} onClose={onClose} title="Claim details" description={claim?.reference}>
-      {claim && (
-        <div className="space-y-4">
-          <div className="rounded-2xl bg-navy-50 p-5 text-center">
-            <p className="tabular text-3xl font-extrabold text-navy-900">
-              {formatCurrency(claim.amount)}
-            </p>
-            <div className="mt-2 flex justify-center">
-              <StatusBadge status={claim.status} />
-            </div>
-          </div>
-          <dl className="divide-y divide-navy-100 rounded-2xl border border-navy-100">
-            <DetailRow label="Reference" value={claim.reference} />
-            <DetailRow label="Destination" value={claim.destination} />
-            <DetailRow label="Method" value={claim.method.toUpperCase()} />
-            <DetailRow label="Submitted" value={formatDate(claim.createdAt, { withTime: true })} />
-            {claim.note && <DetailRow label="Note" value={claim.note} />}
-          </dl>
-        </div>
-      )}
-    </BottomSheet>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-4 px-4 py-3">
-      <dt className="text-sm text-navy-500">{label}</dt>
-      <dd className="text-right text-sm font-semibold text-navy-900">{value}</dd>
-    </div>
   );
 }

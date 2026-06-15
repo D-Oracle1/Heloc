@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ShieldCheck } from 'lucide-react';
 import { NAV_ITEMS } from './navItems';
+import { Logo } from '../ui/Logo';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -18,19 +19,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       className="sticky top-0 hidden h-screen shrink-0 flex-col border-r border-navy-100 bg-white px-3 py-5 lg:flex"
     >
       <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'} px-1`}>
-        {!collapsed && (
-          <div className="flex items-center gap-2">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-gradient text-sm font-extrabold text-white">
-              H
-            </span>
-            <span className="text-lg font-extrabold tracking-tight text-navy-900">HELOC</span>
-          </div>
-        )}
-        {collapsed && (
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-gradient text-sm font-extrabold text-white">
-            H
-          </span>
-        )}
+        {!collapsed && <Logo className="h-5" />}
+        {collapsed && <Logo mark className="h-9" />}
         {!collapsed && (
           <button
             onClick={onToggle}

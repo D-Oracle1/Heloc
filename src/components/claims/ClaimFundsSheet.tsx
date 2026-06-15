@@ -229,7 +229,7 @@ export function ClaimFundsSheet({ open, onClose }: ClaimFundsSheetProps) {
           </dl>
 
           <p className="text-xs leading-relaxed text-navy-400">
-            By confirming, you authorize HELOC to draw {formatCurrency(numericAmount)} from your line
+            By confirming, you authorize US Bank to draw {formatCurrency(numericAmount)} from your line
             of credit. Standard APR of {account.apr}% applies to outstanding balances.
           </p>
 

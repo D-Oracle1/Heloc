@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, EyeOff, ArrowUpRight, TrendingUp } from 'lucide-react';
+import { ChevronDown, Eye, EyeOff, ArrowUpRight, Lock } from 'lucide-react';
 import { useAppStore } from '../../data/store';
 import { formatCurrency } from '../../utils/format';
 
@@ -7,69 +7,103 @@ interface BalanceCardProps {
   onClaim: () => void;
 }
 
+/** Dark balance card with a circular availability indicator. */
 export function BalanceCard({ onClaim }: BalanceCardProps) {
   const { account } = useAppStore();
   const [hidden, setHidden] = useState(false);
-  const usedPct = Math.min(
-    100,
-    Math.round((account.outstandingBalance / account.creditLimit) * 100),
-  );
+  const locked = !account.feePaid;
 
-  const display = (value: number) => (hidden ? '••••••' : formatCurrency(value));
+  const availablePct = account.creditLimit
+    ? Math.min(100, Math.round((account.availableBalance / account.creditLimit) * 100))
+    : 0;
+
+  const display = (value: number) => (hidden ? '••••••••' : formatCurrency(value));
 
   return (
     <section
-      aria-label="Available equity"
-      className="relative overflow-hidden rounded-3xl bg-brand-gradient p-6 text-white shadow-card"
+      aria-label="My balance"
+      className="relative overflow-hidden rounded-3xl bg-navy-900 p-6 text-white shadow-card sm:p-7"
     >
       {/* Decorative glows */}
-      <div className="pointer-events-none absolute -right-10 -top-12 h-44 w-44 rounded-full bg-crimson-500/30 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-16 -left-10 h-44 w-44 rounded-full bg-navy-400/30 blur-3xl" />
+      <div className="pointer-events-none absolute -right-12 -top-16 h-52 w-52 rounded-full bg-crimson-500/25 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-20 left-10 h-52 w-52 rounded-full bg-sky-500/20 blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background:repeating-radial-gradient(circle_at_80%_20%,#fff_0,#fff_1px,transparent_1px,transparent_22px)]" />
 
-      <div className="relative">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-white/70">Available to claim</span>
-          <button
-            onClick={() => setHidden((h) => !h)}
-            aria-label={hidden ? 'Show balance' : 'Hide balance'}
-            aria-pressed={hidden}
-            className="touch-target grid place-items-center rounded-full text-white/70 hover:bg-white/10 hover:text-white focus-ring"
-          >
-            {hidden ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
-        </div>
-
-        <p className="tabular mt-1 text-4xl font-extrabold tracking-tight sm:text-[42px]">
-          {display(account.availableBalance)}
-        </p>
-
-        <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-2.5 py-1 text-xs font-semibold text-emerald-200">
-          <TrendingUp size={13} />
-          {usedPct}% of {formatCurrency(account.creditLimit, { compact: true })} limit drawn
-        </div>
-
-        {/* Utilization meter */}
-        <div className="mt-5">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-white/15">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-crimson-300 to-crimson-500 transition-all duration-700 ease-spring"
-              style={{ width: `${usedPct}%` }}
-            />
-          </div>
-          <div className="mt-2 flex justify-between text-xs text-white/65">
-            <span className="tabular">Outstanding {display(account.outstandingBalance)}</span>
-            <span className="tabular">Limit {formatCurrency(account.creditLimit, { compact: true })}</span>
+      <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-5">
+          <Ring pct={availablePct} />
+          <div>
+            <span className="flex items-center gap-2 text-sm font-medium text-white/60">
+              My Balance
+              {locked && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/20 px-2 py-0.5 text-[11px] font-semibold text-amber-200">
+                  <Lock size={10} /> Locked
+                </span>
+              )}
+            </span>
+            <p className="tabular mt-0.5 text-3xl font-extrabold leading-none tracking-tight sm:text-4xl">
+              {display(account.availableBalance)}
+            </p>
+            <button
+              onClick={() => setHidden((h) => !h)}
+              aria-pressed={hidden}
+              className="mt-2.5 inline-flex items-center gap-1.5 rounded-full text-xs font-medium text-white/55 hover:text-white/80 focus-ring"
+            >
+              {hidden ? <EyeOff size={13} /> : <Eye size={13} />}
+              {hidden ? 'Show' : 'Hide'} account balance in USD
+              <ChevronDown size={13} />
+            </button>
           </div>
         </div>
 
         <button
           onClick={onClaim}
-          className="touch-target mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-3.5 text-base font-bold text-navy-900 shadow-lg transition-all duration-200 ease-spring hover:brightness-95 active:scale-[0.98] focus-ring"
+          className="touch-target inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-base font-bold text-navy-900 shadow-lg transition-all duration-200 ease-spring hover:brightness-95 active:scale-[0.98] focus-ring"
         >
-          Claim Funds
-          <ArrowUpRight size={20} strokeWidth={2.4} />
+          {locked ? (
+            <>
+              <Lock size={18} strokeWidth={2.4} /> Unlock Funds
+            </>
+          ) : (
+            <>
+              Claim Funds <ArrowUpRight size={20} strokeWidth={2.4} />
+            </>
+          )}
         </button>
       </div>
     </section>
+  );
+}
+
+function Ring({ pct }: { pct: number }) {
+  const r = 40;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - pct / 100);
+  return (
+    <div className="relative grid h-[92px] w-[92px] shrink-0 place-items-center">
+      <svg viewBox="0 0 96 96" className="h-full w-full -rotate-90">
+        <defs>
+          <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#f7c6c2" />
+            <stop offset="55%" stopColor="#e8627a" />
+            <stop offset="100%" stopColor="#7c5cff" />
+          </linearGradient>
+        </defs>
+        <circle cx="48" cy="48" r={r} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="8" />
+        <circle
+          cx="48"
+          cy="48"
+          r={r}
+          fill="none"
+          stroke="url(#ringGrad)"
+          strokeWidth="8"
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+          className="transition-[stroke-dashoffset] duration-700 ease-spring"
+        />
+      </svg>
+      <span className="tabular absolute text-sm font-bold">{pct}%</span>
+    </div>
   );
 }
