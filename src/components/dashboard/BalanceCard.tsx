@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, Eye, EyeOff, ArrowUpRight, Lock } from 'lucide-react';
+import { ChevronDown, Eye, EyeOff, ArrowUpRight } from 'lucide-react';
 import { useAppStore } from '../../data/store';
 import { formatCurrency } from '../../utils/format';
 
@@ -11,7 +11,6 @@ interface BalanceCardProps {
 export function BalanceCard({ onClaim }: BalanceCardProps) {
   const { account } = useAppStore();
   const [hidden, setHidden] = useState(false);
-  const locked = !account.feePaid;
 
   const availablePct = account.creditLimit
     ? Math.min(100, Math.round((account.availableBalance / account.creditLimit) * 100))
@@ -30,18 +29,11 @@ export function BalanceCard({ onClaim }: BalanceCardProps) {
       <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background:repeating-radial-gradient(circle_at_80%_20%,#fff_0,#fff_1px,transparent_1px,transparent_22px)]" />
 
       <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-5">
+        <div className="flex min-w-0 items-center gap-4 sm:gap-5">
           <Ring pct={availablePct} />
-          <div>
-            <span className="flex items-center gap-2 text-sm font-medium text-white/60">
-              My Balance
-              {locked && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/20 px-2 py-0.5 text-[11px] font-semibold text-amber-200">
-                  <Lock size={10} /> Locked
-                </span>
-              )}
-            </span>
-            <p className="tabular mt-0.5 text-3xl font-extrabold leading-none tracking-tight sm:text-4xl">
+          <div className="min-w-0">
+            <span className="text-sm font-medium text-white/60">My Balance</span>
+            <p className="tabular mt-0.5 truncate text-[28px] font-extrabold leading-none tracking-tight sm:text-4xl">
               {display(account.availableBalance)}
             </p>
             <button
@@ -50,7 +42,7 @@ export function BalanceCard({ onClaim }: BalanceCardProps) {
               className="mt-2.5 inline-flex items-center gap-1.5 rounded-full text-xs font-medium text-white/55 hover:text-white/80 focus-ring"
             >
               {hidden ? <EyeOff size={13} /> : <Eye size={13} />}
-              {hidden ? 'Show' : 'Hide'} account balance in USD
+              {hidden ? 'Show balance' : 'Hide balance'}
               <ChevronDown size={13} />
             </button>
           </div>
@@ -58,17 +50,10 @@ export function BalanceCard({ onClaim }: BalanceCardProps) {
 
         <button
           onClick={onClaim}
-          className="touch-target inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-base font-bold text-navy-900 shadow-lg transition-all duration-200 ease-spring hover:brightness-95 active:scale-[0.98] focus-ring"
+          className="touch-target inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-base font-bold text-navy-900 shadow-lg transition-all duration-200 ease-spring hover:brightness-95 active:scale-[0.98] focus-ring sm:w-auto"
         >
-          {locked ? (
-            <>
-              <Lock size={18} strokeWidth={2.4} /> Unlock Funds
-            </>
-          ) : (
-            <>
-              Claim Funds <ArrowUpRight size={20} strokeWidth={2.4} />
-            </>
-          )}
+          Claim Now
+          <ArrowUpRight size={20} strokeWidth={2.4} />
         </button>
       </div>
     </section>
@@ -80,7 +65,7 @@ function Ring({ pct }: { pct: number }) {
   const circ = 2 * Math.PI * r;
   const offset = circ * (1 - pct / 100);
   return (
-    <div className="relative grid h-[92px] w-[92px] shrink-0 place-items-center">
+    <div className="relative grid h-[76px] w-[76px] shrink-0 place-items-center sm:h-[92px] sm:w-[92px]">
       <svg viewBox="0 0 96 96" className="h-full w-full -rotate-90">
         <defs>
           <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">

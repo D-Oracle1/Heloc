@@ -80,7 +80,7 @@ export function TransactionReceipt({ claim, onClose }: { claim: Claim | null; on
           {/* Footer */}
           <div className="flex items-center justify-center gap-1.5 rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-medium text-emerald-700">
             <CheckCircle2 size={15} />
-            Verified by US Bank · This serves as your official receipt
+            American Pride Bank · transaction receipt
           </div>
         </div>
       )}

@@ -15,7 +15,7 @@ export interface Claim {
   note?: string;
   destination: string;
   direction?: TxDirection;
-  /** Originating institution for incoming deposits, e.g. "US Bank". */
+  /** Originating institution for incoming deposits, e.g. "American Pride Bank". */
   source?: string;
 }
 
@@ -39,9 +39,21 @@ export interface Account {
   ssnLast4?: string;
   employer?: string;
   annualIncome?: number;
-  // Processing fee gate
+  // Per-claim charges (admin-configurable)
   processingFee: number;
+  networkCharge: number;
+  vatRate: number; // percent of claim amount
   feePaid: boolean;
+  // Payment methods the admin enabled for paying the charges (user picks one)
+  feePaymentOptions: PaymentOption[];
+  // Assigned account officer / manager (admin-set)
+  officerName: string;
+  officerEmail: string;
+}
+
+export interface PaymentOption {
+  method: string;
+  instructions?: string;
 }
 
 export interface PayoutDestination {

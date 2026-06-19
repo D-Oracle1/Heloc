@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon-shield-32.png', 'favicon-shield-64.png', 'apple-touch-icon.png', 'robots.txt'],
       manifest: {
-        name: 'US Bank HELOC — Home Equity Access',
-        short_name: 'US Bank HELOC',
+        name: 'American Pride Bank — Home Equity Access',
+        short_name: 'American Pride',
         description: 'Access and manage your home equity line of credit with a premium, secure experience.',
         theme_color: '#0a1f44',
         background_color: '#0a1f44',

@@ -9,12 +9,6 @@ import {
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase, isSupabaseEnabled } from './supabase';
 
-export interface SignUpLinkedAccount {
-  label: string;
-  method: 'bank' | 'wire' | 'card';
-  detail: string;
-}
-
 export interface SignUpProfile {
   fullName: string;
   phone?: string;
@@ -23,10 +17,8 @@ export interface SignUpProfile {
   addressCity?: string;
   addressState?: string;
   addressZip?: string;
-  ssnLast4?: string;
   employer?: string;
   annualIncome?: string;
-  linkedAccounts: SignUpLinkedAccount[];
 }
 
 interface AuthState {
@@ -107,10 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               address_city: profile.addressCity ?? '',
               address_state: profile.addressState ?? '',
               address_zip: profile.addressZip ?? '',
-              ssn_last4: profile.ssnLast4 ?? '',
               employer: profile.employer ?? '',
               annual_income: profile.annualIncome ?? '',
-              linked_accounts: profile.linkedAccounts,
             },
           },
         });

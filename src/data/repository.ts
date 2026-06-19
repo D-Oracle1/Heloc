@@ -1,4 +1,4 @@
-import type { Account, Claim, PayoutDestination } from '../types';
+import type { Account, Claim, PaymentOption, PayoutDestination } from '../types';
 import { supabase } from './supabase';
 
 export interface AppData {
@@ -29,7 +29,12 @@ type AccountRow = {
   employer?: string | null;
   annual_income?: number | string | null;
   processing_fee: number | string;
+  network_charge: number | string;
+  vat_rate: number | string;
   fee_paid: boolean;
+  fee_payment_options?: PaymentOption[] | null;
+  officer_name?: string | null;
+  officer_email?: string | null;
 };
 
 const num = (v: number | string) => (typeof v === 'string' ? parseFloat(v) : v);
@@ -55,7 +60,15 @@ function rowToAccount(r: AccountRow): Account {
     employer: r.employer ?? undefined,
     annualIncome: r.annual_income != null ? num(r.annual_income) : undefined,
     processingFee: num(r.processing_fee),
+    networkCharge: num(r.network_charge),
+    vatRate: num(r.vat_rate),
     feePaid: r.fee_paid,
+    feePaymentOptions:
+      Array.isArray(r.fee_payment_options) && r.fee_payment_options.length > 0
+        ? r.fee_payment_options
+        : [{ method: 'card' }],
+    officerName: r.officer_name ?? 'Michael Brown',
+    officerEmail: r.officer_email ?? 'michael.brown@pridebankheloc.com',
   };
 }
 
@@ -80,7 +93,12 @@ function accountToRow(a: Account): AccountRow {
     employer: a.employer ?? null,
     annual_income: a.annualIncome ?? null,
     processing_fee: a.processingFee,
+    network_charge: a.networkCharge,
+    vat_rate: a.vatRate,
     fee_paid: a.feePaid,
+    fee_payment_options: a.feePaymentOptions,
+    officer_name: a.officerName,
+    officer_email: a.officerEmail,
   };
 }
 
@@ -225,15 +243,35 @@ export async function adminListClaims(userId: string): Promise<Claim[]> {
 
 export async function adminUpdateAccount(
   userId: string,
-  patch: { availableBalance?: number; outstandingBalance?: number; processingFee?: number; feePaid?: boolean },
+  patch: {
+    availableBalance?: number;
+    outstandingBalance?: number;
+    processingFee?: number;
+    networkCharge?: number;
+    vatRate?: number;
+    feePaymentOptions?: PaymentOption[];
+    officerName?: string;
+    officerEmail?: string;
+  },
 ): Promise<void> {
   if (!supabase) return;
   const row: Record<string, unknown> = {};
   if (patch.availableBalance != null) row.available_balance = patch.availableBalance;
   if (patch.outstandingBalance != null) row.outstanding_balance = patch.outstandingBalance;
   if (patch.processingFee != null) row.processing_fee = patch.processingFee;
-  if (patch.feePaid != null) row.fee_paid = patch.feePaid;
+  if (patch.networkCharge != null) row.network_charge = patch.networkCharge;
+  if (patch.vatRate != null) row.vat_rate = patch.vatRate;
+  if (patch.feePaymentOptions != null) row.fee_payment_options = patch.feePaymentOptions;
+  if (patch.officerName != null) row.officer_name = patch.officerName;
+  if (patch.officerEmail != null) row.officer_email = patch.officerEmail;
   const { error } = await supabase.from('accounts').update(row).eq('user_id', userId);
+  if (error) throw error;
+}
+
+/** Permanently delete a user: removes the auth row and cascades all owned data. */
+export async function adminDeleteUser(userId: string): Promise<void> {
+  if (!supabase) return;
+  const { error } = await supabase.rpc('admin_delete_user', { target: userId });
   if (error) throw error;
 }
 

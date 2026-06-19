@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { Wallet, Percent, TrendingDown, ShieldCheck, Lock } from 'lucide-react';
+import { Wallet, Percent, TrendingDown, ShieldCheck } from 'lucide-react';
 import { TopNav } from '../components/layout/TopNav';
 import { PageTransition } from '../components/ui/PageTransition';
 import { BalanceCard } from '../components/dashboard/BalanceCard';
 import { StatCard } from '../components/dashboard/StatCard';
 import { TransactionsPanel } from '../components/dashboard/TransactionsPanel';
 import { ClaimFundsSheet } from '../components/claims/ClaimFundsSheet';
-import { PayFeeSheet } from '../components/claims/PayFeeSheet';
 import { TransactionReceipt } from '../components/claims/TransactionReceipt';
 import { BalanceSkeleton, CardSkeleton } from '../components/ui/Skeleton';
 import { useAppStore } from '../data/store';
@@ -16,11 +15,7 @@ import type { Claim } from '../types';
 export default function Dashboard() {
   const { account, claims, ready } = useAppStore();
   const [claimOpen, setClaimOpen] = useState(false);
-  const [feeOpen, setFeeOpen] = useState(false);
   const [selected, setSelected] = useState<Claim | null>(null);
-
-  const locked = !account.feePaid;
-  const handlePrimary = () => (locked ? setFeeOpen(true) : setClaimOpen(true));
 
   const deposited = claims
     .filter((c) => c.direction === 'in' && c.status === 'completed')
@@ -35,26 +30,8 @@ export default function Dashboard() {
       <div className="px-4 py-5 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
           {/* Main column */}
-          <div className="space-y-6">
-            {ready && locked && (
-              <button
-                onClick={() => setFeeOpen(true)}
-                className="flex w-full items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left transition-colors hover:bg-amber-100/70 focus-ring"
-              >
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-700">
-                  <Lock size={20} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-bold text-amber-900">Funds locked — action required</span>
-                  <span className="block text-xs text-amber-700">
-                    Pay the {formatCurrency(account.processingFee)} processing fee to release your balance.
-                  </span>
-                </span>
-                <span className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white">Pay now</span>
-              </button>
-            )}
-
-            {!ready ? <BalanceSkeleton /> : <BalanceCard onClaim={handlePrimary} />}
+          <div className="min-w-0 space-y-6">
+            {!ready ? <BalanceSkeleton /> : <BalanceCard onClaim={() => setClaimOpen(true)} />}
 
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               {!ready ? (
@@ -91,7 +68,7 @@ export default function Dashboard() {
           </div>
 
           {/* Transactions column (stacks below on mobile) */}
-          <aside>
+          <aside className="min-w-0">
             {!ready ? (
               <div className="rounded-3xl bg-white p-5 shadow-card">
                 <CardSkeleton />
@@ -108,7 +85,6 @@ export default function Dashboard() {
       </div>
 
       <ClaimFundsSheet open={claimOpen} onClose={() => setClaimOpen(false)} />
-      <PayFeeSheet open={feeOpen} onClose={() => setFeeOpen(false)} />
       <TransactionReceipt claim={selected} onClose={() => setSelected(null)} />
     </PageTransition>
   );

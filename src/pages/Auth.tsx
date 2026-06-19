@@ -12,18 +12,14 @@ import {
   CreditCard,
   ShieldCheck,
   CheckCircle2,
-  Plus,
-  Trash2,
   ArrowRight,
   ArrowLeft,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Logo } from '../components/ui/Logo';
-import { useAuth, type SignUpLinkedAccount } from '../data/auth';
+import { useAuth } from '../data/auth';
 
 type Mode = 'signin' | 'signup';
-
-const emptyLinked = (): SignUpLinkedAccount => ({ label: '', method: 'bank', detail: '' });
 
 export default function Auth() {
   const { signIn, signUp } = useAuth();
@@ -44,14 +40,8 @@ export default function Auth() {
   const [city, setCity] = useState('');
   const [stateField, setStateField] = useState('');
   const [zip, setZip] = useState('');
-  const [ssnLast4, setSsnLast4] = useState('');
   const [employer, setEmployer] = useState('');
   const [income, setIncome] = useState('');
-  const [linked, setLinked] = useState<SignUpLinkedAccount[]>([emptyLinked()]);
-
-  function updateLinked(i: number, patch: Partial<SignUpLinkedAccount>) {
-    setLinked((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
-  }
 
   function goToStep2() {
     setError(null);
@@ -67,9 +57,6 @@ export default function Auth() {
     setLoading(true);
     try {
       if (mode === 'signup') {
-        const linkedAccounts = linked
-          .filter((l) => l.label.trim() || l.detail.trim())
-          .map((l) => ({ label: l.label.trim(), method: l.method, detail: l.detail.trim() }));
         const { needsConfirmation } = await signUp(email.trim(), password, {
           fullName: fullName.trim(),
           phone: phone.trim(),
@@ -78,10 +65,8 @@ export default function Auth() {
           addressCity: city.trim(),
           addressState: stateField.trim(),
           addressZip: zip.trim(),
-          ssnLast4: ssnLast4.trim(),
           employer: employer.trim(),
           annualIncome: income.trim(),
-          linkedAccounts,
         });
         if (needsConfirmation) {
           // Email verification is disabled (auto-confirm); sign in directly.
@@ -141,7 +126,7 @@ export default function Auth() {
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm text-white/70">
-          <ShieldCheck size={18} /> 256-bit encryption · FDIC member
+          <ShieldCheck size={18} /> 256-bit encryption · test environment
         </div>
       </div>
 
@@ -217,47 +202,13 @@ export default function Auth() {
                   </Field>
                 </Group>
 
-                <Group title="Identity & employment">
-                  <Field icon={<ShieldCheck size={18} />} label="SSN (last 4)">
-                    <input type="text" inputMode="numeric" maxLength={4} value={ssnLast4} onChange={(e) => setSsnLast4(e.target.value.replace(/\D/g, ''))} placeholder="1234" className={inputCls} />
-                  </Field>
+                <Group title="Employment">
                   <Field icon={<Briefcase size={18} />} label="Employer">
                     <input type="text" value={employer} onChange={(e) => setEmployer(e.target.value)} placeholder="Acme Corp" className={inputCls} />
                   </Field>
                   <Field icon={<CreditCard size={18} />} label="Annual income (USD)">
                     <input type="number" min="0" value={income} onChange={(e) => setIncome(e.target.value)} placeholder="85000" className={inputCls} />
                   </Field>
-                </Group>
-
-                <Group title="Linked bank accounts">
-                  {linked.map((l, i) => (
-                    <div key={i} className="rounded-2xl border border-navy-200 bg-navy-50/40 p-3">
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className="text-xs font-semibold text-navy-600">Account {i + 1}</span>
-                        {linked.length > 1 && (
-                          <button type="button" onClick={() => setLinked((p) => p.filter((_, idx) => idx !== i))} className="text-navy-400 hover:text-crimson-600 focus-ring rounded" aria-label="Remove account">
-                            <Trash2 size={15} />
-                          </button>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <input type="text" value={l.label} onChange={(e) => updateLinked(i, { label: e.target.value })} placeholder="Bank & nickname (e.g. Chase Checking)" className={boxInputCls} />
-                        <div className="grid grid-cols-2 gap-2">
-                          <select value={l.method} onChange={(e) => updateLinked(i, { method: e.target.value as SignUpLinkedAccount['method'] })} className={boxInputCls}>
-                            <option value="bank">Bank (ACH)</option>
-                            <option value="wire">Wire</option>
-                            <option value="card">Debit card</option>
-                          </select>
-                          <input type="text" inputMode="numeric" maxLength={4} value={l.detail.replace(/\D/g, '')} onChange={(e) => updateLinked(i, { detail: e.target.value ? `•••• ${e.target.value.replace(/\D/g, '')}` : '' })} placeholder="Last 4" className={boxInputCls} />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {linked.length < 4 && (
-                    <button type="button" onClick={() => setLinked((p) => [...p, emptyLinked()])} className="inline-flex items-center gap-1.5 text-sm font-semibold text-crimson-600 hover:text-crimson-700 focus-ring rounded">
-                      <Plus size={15} /> Add another account
-                    </button>
-                  )}
                 </Group>
               </>
             )}
@@ -309,8 +260,6 @@ function Stepper({ step }: { step: 1 | 2 }) {
 }
 
 const inputCls = 'w-full bg-transparent text-navy-900 outline-none placeholder:text-navy-300';
-const boxInputCls =
-  'w-full rounded-xl border border-navy-200 bg-white px-3 py-2 text-sm text-navy-900 outline-none focus:border-navy-400 placeholder:text-navy-300';
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (

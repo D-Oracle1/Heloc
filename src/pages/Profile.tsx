@@ -13,6 +13,7 @@ import {
   Phone,
   Calendar,
   Briefcase,
+  UserCheck,
   RotateCcw,
   type LucideIcon,
 } from 'lucide-react';
@@ -27,7 +28,7 @@ import { useAuth } from '../data/auth';
 import { formatCurrency, formatDate } from '../utils/format';
 
 export default function Profile() {
-  const { account, destinations, resetDemo } = useAppStore();
+  const { account, resetDemo } = useAppStore();
   const { signOut, demoMode } = useAuth();
   const [notifications, setNotifications] = useState(true);
   const [biometrics, setBiometrics] = useState(true);
@@ -73,6 +74,31 @@ export default function Profile() {
           </div>
         </Card>
 
+        {/* Account manager */}
+        <Card className="overflow-hidden">
+          <div className="flex items-center gap-3 border-b border-navy-100 p-4">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-navy-800 text-white">
+              <UserCheck size={20} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-navy-400">Account manager</p>
+              <p className="font-bold text-navy-900">{account.officerName}</p>
+            </div>
+          </div>
+          <div className="p-4">
+            <p className="text-sm text-navy-600">
+              <span className="font-semibold text-navy-800">{account.officerName}</span> is in charge of your
+              account. All complaints and correspondence should be directed to him.
+            </p>
+            <a
+              href={`mailto:${account.officerEmail}`}
+              className="mt-3 inline-flex items-center gap-2 rounded-xl bg-navy-50 px-3 py-2 text-sm font-semibold text-navy-800 transition-colors hover:bg-navy-100 focus-ring"
+            >
+              <Mail size={16} /> {account.officerEmail}
+            </a>
+          </div>
+        </Card>
+
         {/* Personal details */}
         <Section title="Personal details">
           {account.phone && <Row icon={Phone} label="Phone" value={account.phone} />}
@@ -82,13 +108,6 @@ export default function Profile() {
           {typeof account.annualIncome === 'number' && account.annualIncome > 0 && (
             <Row icon={CreditCard} label="Annual income" value={formatCurrency(account.annualIncome, { compact: true })} />
           )}
-        </Section>
-
-        {/* Linked accounts */}
-        <Section title="Linked accounts">
-          {destinations.map((dest) => (
-            <Row key={dest.id} icon={CreditCard} label={dest.label} value={dest.detail} />
-          ))}
         </Section>
 
         {/* Preferences */}

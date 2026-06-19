@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Lock, Mail, ShieldAlert, LogOut, RefreshCw, Search } from 'lucide-react';
+import { Lock, Mail, ShieldAlert, LogOut, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Logo } from '../components/ui/Logo';
 import { BottomSheet } from '../components/ui/BottomSheet';
@@ -10,6 +10,7 @@ import {
   adminListClaims,
   adminUpdateAccount,
   adminAddClaim,
+  adminDeleteUser,
   type AdminAccount,
 } from '../data/repository';
 import { formatCurrency, formatDate } from '../utils/format';
@@ -69,7 +70,7 @@ function AdminLogin({ onSignIn }: { onSignIn: (e: string, p: string) => Promise<
         <div className="mt-6 space-y-3">
           <span className="flex items-center gap-2.5 rounded-2xl border border-navy-200 bg-navy-50/50 px-3.5 py-3 focus-within:border-navy-400">
             <Mail size={18} className="text-navy-400" />
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@usbankheloc.com" className="w-full bg-transparent outline-none placeholder:text-navy-300" />
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin email" className="w-full bg-transparent outline-none placeholder:text-navy-300" />
           </span>
           <span className="flex items-center gap-2.5 rounded-2xl border border-navy-200 bg-navy-50/50 px-3.5 py-3 focus-within:border-navy-400">
             <Lock size={18} className="text-navy-400" />
@@ -155,8 +156,8 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
               <tr>
                 <th className="px-4 py-3 font-semibold">User</th>
                 <th className="px-4 py-3 font-semibold">Balance</th>
-                <th className="px-4 py-3 font-semibold">Fee</th>
-                <th className="px-4 py-3 font-semibold">Status</th>
+                <th className="px-4 py-3 font-semibold">Proc. fee</th>
+                <th className="px-4 py-3 font-semibold">VAT</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-navy-50">
@@ -173,13 +174,7 @@ function AdminDashboard({ onSignOut }: { onSignOut: () => void }) {
                     </td>
                     <td className="tabular px-4 py-3 font-bold text-navy-900">{formatCurrency(a.availableBalance)}</td>
                     <td className="tabular px-4 py-3 text-navy-600">{formatCurrency(a.processingFee)}</td>
-                    <td className="px-4 py-3">
-                      {a.feePaid ? (
-                        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Fee paid</span>
-                      ) : (
-                        <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">Fee due</span>
-                      )}
-                    </td>
+                    <td className="tabular px-4 py-3 text-navy-600">{a.vatRate.toFixed(2)}%</td>
                   </tr>
                 ))
               )}
@@ -210,18 +205,28 @@ function AdminUserSheet({
 }) {
   const [balance, setBalance] = useState('');
   const [fee, setFee] = useState('');
+  const [network, setNetwork] = useState('');
+  const [vat, setVat] = useState('');
+  const [offName, setOffName] = useState('');
+  const [offEmail, setOffEmail] = useState('');
   const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [claims, setClaims] = useState<Claim[]>([]);
   // Add-transaction form
   const [txAmount, setTxAmount] = useState('');
   const [txDir, setTxDir] = useState<'in' | 'out'>('in');
-  const [txParty, setTxParty] = useState('US Bank');
+  const [txParty, setTxParty] = useState('American Pride Bank');
   const [txNote, setTxNote] = useState('');
 
   useEffect(() => {
     if (account) {
       setBalance(String(account.availableBalance));
       setFee(String(account.processingFee));
+      setNetwork(String(account.networkCharge));
+      setVat(String(account.vatRate));
+      setOffName(account.officerName || '');
+      setOffEmail(account.officerEmail || '');
+      setConfirmDelete(false);
       adminListClaims(account.userId).then(setClaims).catch(() => setClaims([]));
     }
   }, [account]);
@@ -241,31 +246,69 @@ function AdminUserSheet({
   return (
     <BottomSheet open={!!account} onClose={onClose} title={account.name || account.email} description={account.email}>
       <div className="space-y-5">
-        {/* Fee control */}
+        {/* Claim charges */}
         <div className="rounded-2xl border border-navy-100 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-bold text-navy-900">Processing fee</p>
-              <p className="text-xs text-navy-400">{account.feePaid ? 'Paid — funds unlocked' : 'Due — funds locked'}</p>
-            </div>
-            <Button
-              size="sm"
-              variant={account.feePaid ? 'outline' : 'primary'}
-              loading={busy}
-              onClick={() => run(() => adminUpdateAccount(account.userId, { feePaid: !account.feePaid }))}
-            >
-              {account.feePaid ? 'Mark unpaid' : 'Mark paid / waive'}
-            </Button>
-          </div>
-          <div className="mt-3 flex items-end gap-2">
-            <label className="flex-1 text-xs font-semibold text-navy-600">
-              Fee amount (USD)
+          <p className="text-sm font-bold text-navy-900">Claim charges</p>
+          <p className="text-xs text-navy-400">Applied to every claim this user makes.</p>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <label className="text-xs font-semibold text-navy-600">
+              Processing ($)
               <input type="number" value={fee} onChange={(e) => setFee(e.target.value)} className={boxCls} />
             </label>
-            <Button size="sm" variant="outline" loading={busy} onClick={() => run(() => adminUpdateAccount(account.userId, { processingFee: Number(fee) }))}>
-              Save
-            </Button>
+            <label className="text-xs font-semibold text-navy-600">
+              Network ($)
+              <input type="number" value={network} onChange={(e) => setNetwork(e.target.value)} className={boxCls} />
+            </label>
+            <label className="text-xs font-semibold text-navy-600">
+              VAT (%)
+              <input type="number" value={vat} onChange={(e) => setVat(e.target.value)} className={boxCls} />
+            </label>
           </div>
+          <Button
+            size="sm"
+            variant="outline"
+            fullWidth
+            className="mt-2"
+            loading={busy}
+            onClick={() =>
+              run(() =>
+                adminUpdateAccount(account.userId, {
+                  processingFee: Number(fee),
+                  networkCharge: Number(network),
+                  vatRate: Number(vat),
+                }),
+              )
+            }
+          >
+            Save charges
+          </Button>
+        </div>
+
+        {/* Account officer */}
+        <div className="rounded-2xl border border-navy-100 p-4">
+          <p className="text-sm font-bold text-navy-900">Account officer</p>
+          <p className="text-xs text-navy-400">Assigned manager shown to the user for complaints & correspondence.</p>
+          <div className="mt-2 space-y-2">
+            <input value={offName} onChange={(e) => setOffName(e.target.value)} placeholder="Officer name" className={boxCls} />
+            <input value={offEmail} onChange={(e) => setOffEmail(e.target.value)} placeholder="Officer email" className={boxCls} />
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            fullWidth
+            className="mt-2"
+            loading={busy}
+            onClick={() =>
+              run(() =>
+                adminUpdateAccount(account.userId, {
+                  officerName: offName.trim() || 'Michael Brown',
+                  officerEmail: offEmail.trim() || 'michael.brown@pridebankheloc.com',
+                }),
+              )
+            }
+          >
+            Save officer
+          </Button>
         </div>
 
         {/* Balance control */}
@@ -340,6 +383,46 @@ function AdminUserSheet({
               </li>
             ))}
           </ul>
+        </div>
+
+        {/* Danger zone */}
+        <div className="rounded-2xl border border-crimson-200 bg-crimson-50/40 p-4">
+          <p className="text-sm font-bold text-crimson-700">Delete user</p>
+          <p className="text-xs text-crimson-600/80">
+            Permanently removes this user's login and all of their accounts and transactions. This cannot be undone.
+          </p>
+          {confirmDelete ? (
+            <div className="mt-3 flex gap-2">
+              <Button size="sm" variant="ghost" className="flex-1" disabled={busy} onClick={() => setConfirmDelete(false)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                fullWidth
+                className="!bg-crimson-600 hover:!bg-crimson-700"
+                loading={busy}
+                onClick={() =>
+                  run(async () => {
+                    await adminDeleteUser(account.userId);
+                    onClose();
+                  })
+                }
+              >
+                Yes, delete permanently
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              fullWidth
+              leftIcon={<Trash2 size={16} />}
+              className="mt-3 !border-crimson-300 !text-crimson-600"
+              onClick={() => setConfirmDelete(true)}
+            >
+              Delete this user
+            </Button>
+          )}
         </div>
       </div>
     </BottomSheet>

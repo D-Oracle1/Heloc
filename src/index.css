@@ -16,10 +16,16 @@
     scroll-behavior: smooth;
   }
 
+  html {
+    /* Guard against any stray element forcing horizontal scroll / zoom-out on mobile. */
+    overflow-x: clip;
+  }
+
   body {
     @apply bg-surface text-ink antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     overscroll-behavior-y: none;
+    overflow-x: clip;
   }
 
   /* Numeric values feel more premium tabular */

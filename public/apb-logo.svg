@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 64" fill="none">
+  <defs>
+    <linearGradient id="apbg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a1f44"/>
+      <stop offset="1" stop-color="#c41f14"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#apbg)"/>
+  <path d="M32 13l5 10.1 11.2 1.6-8.1 7.9 1.9 11.1L32 39.4l-10 5.3 1.9-11.1-8.1-7.9 11.2-1.6z" fill="#fff"/>
+  <text x="80" y="41" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="-0.5">
+    <tspan fill="#0a1f44">American Pride</tspan><tspan fill="#c41f14"> Bank</tspan>
+  </text>
+</svg>
